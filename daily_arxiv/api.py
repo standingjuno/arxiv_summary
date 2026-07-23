@@ -23,7 +23,7 @@ from daily_arxiv.database import PaperRow, cleanup_old_papers, init_db, save_sum
 from daily_arxiv.fetch_arxiv import fetch_arxiv_papers
 from daily_arxiv.run_state import PipelineAlreadyRunning, pipeline_lock
 from daily_arxiv.static_export import calendar_window_start, export_static_site_data, web_data_path
-from daily_arxiv.summary_ai import SummaryBatchPending, summarize_papers
+from daily_arxiv.summary_ai import SummaryBatchPending, finalize_completed_summary_batches, summarize_papers
 
 
 class DateRunResponse(BaseModel):
@@ -97,6 +97,7 @@ def _set_job(job_id: str, **updates: object) -> None:
 
 
 def _job_response(job_id: str) -> JobStatusResponse:
+    _refresh_pending_job(job_id)
     with _jobs_lock:
         job = dict(_jobs.get(job_id) or {})
     if not job:
@@ -109,7 +110,7 @@ def _create_or_get_job(date_str: str) -> tuple[str, dict[str, object], bool]:
         existing_job_id = _date_jobs.get(date_str)
         if existing_job_id:
             existing = _jobs.get(existing_job_id)
-            if existing and existing.get("status") in {"queued", "running"}:
+            if existing and existing.get("status") in {"queued", "running", "pending"}:
                 return existing_job_id, existing, False
 
         job_id = uuid.uuid4().hex
@@ -124,6 +125,65 @@ def _create_or_get_job(date_str: str) -> tuple[str, dict[str, object], bool]:
         _jobs[job_id] = job
         _date_jobs[date_str] = job_id
         return job_id, job, True
+
+
+def _clear_date_job_if_terminal(job_id: str, date_str: str) -> None:
+    with _jobs_lock:
+        status = _jobs.get(job_id, {}).get("status")
+        if _date_jobs.get(date_str) == job_id and status in {"completed", "failed"}:
+            _date_jobs.pop(date_str, None)
+
+
+def _refresh_pending_job(job_id: str) -> None:
+    with _jobs_lock:
+        job = dict(_jobs.get(job_id) or {})
+    if job.get("status") != "pending":
+        return
+
+    date_str = str(job.get("date") or "")
+    if not date_str:
+        return
+
+    job_settings = load_settings()
+    if job_settings.api_on_demand_summary_mode != "batch":
+        return
+
+    try:
+        with pipeline_lock(job_settings):
+            _set_job(job_id, progress=65, message="Checking OpenAI batch", error=None)
+            summary_settings = replace(job_settings, ai_mode="batch")
+            finalized = finalize_completed_summary_batches(settings=summary_settings, save=True)
+
+            if finalized:
+                for papers in finalized.values():
+                    save_summarized_papers_to_db(papers, settings=job_settings)
+                cleanup_old_papers(settings=job_settings)
+                export_static_site_data(settings=job_settings)
+
+            paper_count = _paper_count_for_date(job_settings, date_str)
+            if paper_count > 0:
+                _set_job(
+                    job_id,
+                    status="completed",
+                    progress=100,
+                    message="Ready",
+                    paper_count=paper_count,
+                    error=None,
+                )
+                _clear_date_job_if_terminal(job_id, date_str)
+            else:
+                _set_job(
+                    job_id,
+                    status="pending",
+                    progress=60,
+                    message="OpenAI batch is still processing",
+                    error=None,
+                )
+    except PipelineAlreadyRunning:
+        _set_job(job_id, status="pending", progress=60, message="Waiting for another run", error=None)
+    except Exception as exc:
+        _set_job(job_id, status="failed", progress=100, message="Failed", error=str(exc))
+        _clear_date_job_if_terminal(job_id, date_str)
 
 
 @contextmanager
@@ -207,14 +267,15 @@ def _run_on_demand_job(job_id: str, date_str: str) -> None:
             job_id,
             status="pending",
             progress=60,
-            message="OpenAI batch is still processing",
-            error=str(exc),
+            message=f"OpenAI batch is still processing ({exc.status})",
+            error=None,
         )
     except Exception as exc:
         _set_job(job_id, status="failed", progress=100, message="Failed", error=str(exc))
     finally:
         with _jobs_lock:
-            if _date_jobs.get(date_str) == job_id and _jobs.get(job_id, {}).get("status") != "running":
+            status = _jobs.get(job_id, {}).get("status")
+            if _date_jobs.get(date_str) == job_id and status in {"completed", "failed"}:
                 _date_jobs.pop(date_str, None)
 
 

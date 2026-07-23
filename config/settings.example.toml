@@ -94,7 +94,7 @@ cors_origins = [
   "http://127.0.0.1:8765",
 ]
 on_demand_enabled = true
-on_demand_summary_mode = "sync"
+on_demand_summary_mode = "batch"
 on_demand_max_papers = 600
 
 [paths]

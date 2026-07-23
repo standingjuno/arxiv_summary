@@ -116,7 +116,7 @@ host = "0.0.0.0"
 port = 8000
 cors_origins = ["https://standingjuno.github.io"]
 on_demand_enabled = true
-on_demand_summary_mode = "sync"
+on_demand_summary_mode = "batch"
 on_demand_max_papers = 600
 ```
 
@@ -234,6 +234,8 @@ OpenAI 요약은 기본적으로 Batch API를 사용합니다. Batch API는 요�
 6. `custom_id`로 논문을 다시 매핑해 `output/summaries/arxiv_summaries_YYYY-MM-DD.json`과 DB에 저장합니다.
 
 제출 직후 batch가 `validating` 또는 `in_progress` 상태이면 정상 대기 상태로 보고, `store`는 다음 실행에서 처리합니다. 즉 daily job은 보통 “완료된 이전 batch 반영 + 오늘 batch 제출” 방식으로 움직입니다.
+
+웹에서 데이터가 없는 평일 날짜를 선택하면 FastAPI의 `POST /api/dates/{date}/run`이 실행됩니다. `on_demand_summary_mode = "batch"`이면 즉시 OpenAI Batch를 제출하고 `pending` 상태로 남깁니다. 프론트엔드는 `GET /api/jobs/{job_id}`를 계속 polling하며, 서버는 polling 중 완료된 Batch를 발견하면 요약을 DB에 저장하고 `web/data/site-data.json`을 다시 export합니다.
 
 ## Watched Fields
 

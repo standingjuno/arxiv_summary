@@ -627,7 +627,7 @@ async function handleJobStatus(job) {
     clearLiveJobSoon();
   }
 
-  if (job.status === 'failed' || job.status === 'pending') {
+  if (job.status === 'failed') {
     stopPolling();
   }
 }
@@ -678,7 +678,7 @@ async function startOnDemand(dateString) {
     }
     const job = await fetchJson(url, { method: 'POST' });
     await handleJobStatus(job);
-    if (!['completed', 'failed', 'pending'].includes(job.status) && job.job_id !== 'cached') {
+    if (!['completed', 'failed'].includes(job.status) && job.job_id !== 'cached') {
       pollJob(job.job_id);
     }
   } catch (error) {
