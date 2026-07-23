@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 import time
+import unicodedata
 from typing import Any
 
 from openai import OpenAI
@@ -39,7 +40,7 @@ Required JSON schema:
 Rules:
 - Keep the original title out of title_kor.
 - summary must be exactly one Korean sentence.
-- keywords must be one to five concise technical keywords.
+- keywords must be one to five concise technical keywords, preferably English canonical labels or acronyms.
 - Fewer than five keywords are acceptable when only a smaller set is meaningful after reuse and canonicalization.
 - Reuse an existing keyword when it has the same or a very similar meaning.
 - Create a new keyword only when no existing keyword is suitable.
@@ -82,7 +83,8 @@ def batch_error_path(settings: Settings, date_str: str) -> Path:
 
 
 def normalize_keyword(keyword: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "", keyword.lower())
+    normalized = unicodedata.normalize("NFKC", keyword).casefold()
+    return "".join(char for char in normalized if char.isalnum())
 
 
 class KeywordStore:
@@ -308,6 +310,20 @@ def _load_existing_summaries(
         paper.arxiv_id: paper
         for paper in load_summarized_papers(settings=settings, date_str=date_str)
     }
+
+
+def _merge_summaries_in_paper_order(
+    papers: list[RawPaper],
+    existing_by_id: dict[str, SummarizedPaper],
+    updated_papers: list[SummarizedPaper],
+) -> list[SummarizedPaper]:
+    merged_by_id = dict(existing_by_id)
+    merged_by_id.update({paper.arxiv_id: paper for paper in updated_papers})
+    return [
+        merged_by_id[paper.arxiv_id]
+        for paper in papers
+        if paper.arxiv_id in merged_by_id
+    ]
 
 
 def _keyword_store(settings: Settings) -> KeywordStore:
@@ -631,9 +647,10 @@ def summarize_papers_batch_openai(
 
     if not remaining_papers:
         summarized = [existing_by_id[paper.arxiv_id] for paper in selected_papers]
+        merged = _merge_summaries_in_paper_order(papers, existing_by_id, summarized)
         if save:
-            save_summarized_papers(summarized, settings=settings, date_str=date_str)
-        return summarized
+            save_summarized_papers(merged, settings=settings, date_str=date_str)
+        return merged
 
     client = OpenAI(api_key=require_openai_api_key(settings))
     state = _load_batch_state(settings, date_str)
@@ -792,10 +809,15 @@ def summarize_papers_sync_openai(
         summarized.append(result)
 
         if save:
-            save_summarized_papers(summarized, settings=settings, date_str=date_str)
+            save_summarized_papers(
+                _merge_summaries_in_paper_order(papers, existing_by_id, summarized),
+                settings=settings,
+                date_str=date_str,
+            )
         time.sleep(settings.summary_sleep_seconds)
 
     if save:
+        summarized = _merge_summaries_in_paper_order(papers, existing_by_id, summarized)
         save_summarized_papers(summarized, settings=settings, date_str=date_str)
     return summarized
 
