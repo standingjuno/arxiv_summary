@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -29,6 +29,20 @@ FIELD_LABELS = {
     "machine_learning": "Machine Learning",
     "computer_vision": "Computer Vision",
 }
+
+
+def calendar_month_count(days: int) -> int:
+    return max(1, (max(days, 1) + 30) // 31)
+
+
+def _add_months(value: date, delta: int) -> date:
+    month_index = value.month - 1 + delta
+    return date(value.year + month_index // 12, month_index % 12 + 1, 1)
+
+
+def calendar_window_start(end_date: date, *, days: int) -> date:
+    current_month = end_date.replace(day=1)
+    return _add_months(current_month, -(calendar_month_count(days) - 1))
 
 
 def web_data_path(settings: Settings) -> Path:
@@ -139,13 +153,15 @@ def export_static_site_data(
 
     now = datetime.now(ZoneInfo(settings.timezone))
     end_date = now.date()
-    start_date = end_date - timedelta(days=max(days - 1, 0))
+    start_date = calendar_window_start(end_date, days=days)
     start_date_str = start_date.isoformat()
+    end_date_str = end_date.isoformat()
 
     with Session(engine) as session:
         rows = session.scalars(
             select(PaperRow)
             .where(PaperRow.listing_date >= start_date_str)
+            .where(PaperRow.listing_date <= end_date_str)
             .order_by(PaperRow.listing_date.desc(), PaperRow.modified_at.desc(), PaperRow.id.desc())
         ).all()
         keyword_rows = session.scalars(select(KeywordRow).order_by(KeywordRow.name.asc())).all()
@@ -171,7 +187,8 @@ def export_static_site_data(
         "range": {
             "start": start_date.isoformat(),
             "end": end_date.isoformat(),
-            "days": days,
+            "days": (end_date - start_date).days + 1,
+            "months": calendar_month_count(days),
         },
         "categories": _category_nav(settings, papers),
         "fields": [

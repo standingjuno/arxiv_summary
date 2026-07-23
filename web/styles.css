@@ -153,6 +153,12 @@ input {
   line-height: 1;
 }
 
+.icon-button:disabled {
+  color: #b8c2cf;
+  background: #f4f6f8;
+  cursor: not-allowed;
+}
+
 .weekday-row,
 .calendar-grid {
   display: grid;

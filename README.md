@@ -148,6 +148,7 @@ categories = ["cs.RO", "cs.LG", "cs.CV", "stat.ML", "cs.CL", "cs.AI"]
 - 날짜별 논문 그룹 표시
 - 데이터가 없는 평일 날짜를 선택하면 API가 arXiv 수집, OpenAI 요약, DB 저장, 웹 JSON export를 수행
 - 백필 중에는 원형 spinner와 진행률이 표시됨
+- 달력은 현재 월을 포함한 최근 12개월만 보여주며, 오늘 이후 날짜와 주말은 선택할 수 없음
 
 GitHub Pages는 정적 호스팅이라 OpenAI API나 DB를 직접 실행할 수 없습니다. 그래서 `standingjuno.github.io/arxiv_summary/`는 정적 UI를 담당하고, 서버의 `arxiv-summary-api` 컨테이너가 실시간 백필을 담당합니다.
 

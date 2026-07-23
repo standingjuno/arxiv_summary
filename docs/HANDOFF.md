@@ -189,6 +189,7 @@ main.py
 - `cs.RO`는 `robotics`, `cs.LG/stat.ML/cs.AI/cs.CL`은 `machine_learning`, `cs.CV`는 `computer_vision`으로 매핑했다.
 - cross-list 때문에 하나의 논문은 여러 `fields`를 가질 수 있다. 예: `cs.RO + cs.LG + cs.CV -> robotics + machine_learning + computer_vision`.
 - AI에는 title과 abstract만 전달한다. PDF 전문 파싱은 아직 하지 않는다.
+- 웹 달력은 현재 월 포함 최근 12개월만 노출한다. 예: 2026년 7월 기준 `2025-08`부터 `2026-07`까지이며, 오늘 이후 날짜와 주말은 UI와 API에서 모두 막는다.
 - OpenAI 요약은 Batch API를 기본으로 사용한다. 한 daily run은 보통 이전 완료 batch를 DB에 반영하고 오늘 batch를 제출한다.
 - Batch API 제출 직후 `validating/in_progress/finalizing` 상태는 오류가 아니라 정상 대기 상태다.
 - GitHub Pages는 DB에 직접 접근하지 않는다. 반드시 서버에서 DB를 `web/data/site-data.json`으로 export한 뒤 push해야 웹 데이터가 갱신된다.

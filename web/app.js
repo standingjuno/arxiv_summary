@@ -1,5 +1,7 @@
 const DATA_URL = './data/site-data.json';
 const POLL_INTERVAL_MS = 2000;
+const DEFAULT_TIMEZONE = 'Asia/Seoul';
+const DEFAULT_CALENDAR_MONTHS = 12;
 
 const runtimeConfig = window.ARXIV_SUMMARY_CONFIG || {};
 let pollTimer = null;
@@ -78,6 +80,52 @@ function toDateString(value) {
   return `${year}-${month}-${day}`;
 }
 
+function todayDateString(data = state.data) {
+  const timezone = data?.timezone || DEFAULT_TIMEZONE;
+  try {
+    const parts = Object.fromEntries(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date()).map((part) => [part.type, part.value]),
+    );
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  } catch (_error) {
+    return toDateString(new Date());
+  }
+}
+
+function monthStart(value) {
+  return new Date(value.getFullYear(), value.getMonth(), 1);
+}
+
+function addMonths(value, delta) {
+  return new Date(value.getFullYear(), value.getMonth() + delta, 1);
+}
+
+function compareMonth(left, right) {
+  return (left.getFullYear() - right.getFullYear()) || (left.getMonth() - right.getMonth());
+}
+
+function calendarMonthCount(data = state.data) {
+  const months = Number(data?.range?.months || DEFAULT_CALENDAR_MONTHS);
+  return Number.isFinite(months) && months > 0 ? Math.floor(months) : DEFAULT_CALENDAR_MONTHS;
+}
+
+function calendarBounds(data = state.data) {
+  const end = parseDate(todayDateString(data));
+  const maxMonth = monthStart(end);
+  const minMonth = addMonths(maxMonth, -(calendarMonthCount(data) - 1));
+  return {
+    start: toDateString(minMonth),
+    end: toDateString(end),
+    minMonth,
+    maxMonth,
+  };
+}
+
 function formatMonth(value) {
   return value.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
 }
@@ -92,11 +140,13 @@ function formatDate(value) {
 }
 
 function latestWeekdayDate(data) {
-  const withPapers = [...data.dates].reverse().find((day) => day.has_papers && !day.is_weekend);
+  const withPapers = [...data.dates].reverse().find((day) => (
+    day.has_papers && !day.is_weekend && dateIsInRange(day.date)
+  ));
   if (withPapers) {
     return withPapers.date;
   }
-  const weekday = [...data.dates].reverse().find((day) => !day.is_weekend);
+  const weekday = [...data.dates].reverse().find((day) => !day.is_weekend && dateIsInRange(day.date));
   return weekday ? weekday.date : null;
 }
 
@@ -119,11 +169,11 @@ function findDateInfo(dateString) {
 }
 
 function dateIsInRange(dateString) {
-  const range = state.data.range || {};
-  if (range.start && dateString < range.start) {
+  const bounds = calendarBounds();
+  if (dateString < bounds.start) {
     return false;
   }
-  if (range.end && dateString > range.end) {
+  if (dateString > bounds.end) {
     return false;
   }
   return true;
@@ -168,9 +218,12 @@ function renderCalendar() {
   const last = new Date(current.getFullYear(), current.getMonth() + 1, 0);
   const startOffset = (first.getDay() + 6) % 7;
   const dateMap = new Map(state.data.dates.map((day) => [day.date, day]));
-  const todayString = (state.data.range || {}).end || toDateString(new Date());
+  const bounds = calendarBounds();
+  const todayString = bounds.end;
 
   els.calendarTitle.textContent = formatMonth(current);
+  els.prevMonthButton.disabled = compareMonth(addMonths(first, -1), bounds.minMonth) < 0;
+  els.nextMonthButton.disabled = compareMonth(addMonths(first, 1), bounds.maxMonth) > 0;
   els.calendarGrid.innerHTML = '';
 
   for (let i = 0; i < startOffset; i += 1) {
@@ -188,7 +241,8 @@ function renderCalendar() {
       count: 0,
       has_papers: false,
     };
-    const unavailable = info.is_weekend || !dateIsInRange(dateString);
+    const outOfRange = !dateIsInRange(dateString);
+    const unavailable = info.is_weekend || outOfRange;
 
     const button = document.createElement('button');
     button.type = 'button';
@@ -201,7 +255,13 @@ function renderCalendar() {
     ].filter(Boolean).join(' ');
     button.textContent = String(day);
     button.disabled = unavailable;
-    button.title = info.is_weekend ? 'Weekend' : `${dateString} · ${info.count} papers`;
+    button.title = info.is_weekend
+      ? 'Weekend'
+      : outOfRange && dateString > bounds.end
+        ? 'Future date'
+        : outOfRange
+          ? 'Outside the calendar range'
+          : `${dateString} · ${info.count} papers`;
 
     if (!unavailable) {
       button.addEventListener('click', () => selectDate(dateString));
@@ -374,8 +434,8 @@ function renderMeta() {
   const generated = state.data.generated_at
     ? new Date(state.data.generated_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
     : 'not generated';
-  const range = state.data.range || {};
-  els.metaText.textContent = `${state.data.papers.length} papers · ${range.start || '-'} to ${range.end || '-'} · ${generated}`;
+  const bounds = calendarBounds();
+  els.metaText.textContent = `${state.data.papers.length} papers · ${bounds.start} to ${bounds.end} · ${generated}`;
 }
 
 function renderLiveStatus() {
@@ -413,11 +473,19 @@ function render() {
 }
 
 function moveMonth(delta) {
-  state.calendarMonth = new Date(
+  const bounds = calendarBounds();
+  const nextMonth = new Date(
     state.calendarMonth.getFullYear(),
     state.calendarMonth.getMonth() + delta,
     1,
   );
+  if (compareMonth(nextMonth, bounds.minMonth) < 0) {
+    state.calendarMonth = bounds.minMonth;
+  } else if (compareMonth(nextMonth, bounds.maxMonth) > 0) {
+    state.calendarMonth = bounds.maxMonth;
+  } else {
+    state.calendarMonth = nextMonth;
+  }
   renderCalendar();
 }
 
@@ -583,6 +651,9 @@ async function startOnDemand(dateString) {
 }
 
 function selectDate(dateString) {
+  if (!dateIsInRange(dateString) || findDateInfo(dateString).is_weekend) {
+    return;
+  }
   state.selectedDate = dateString;
   render();
   startOnDemand(dateString);
@@ -612,7 +683,7 @@ async function init() {
   try {
     await loadSiteData();
     state.selectedDate = latestWeekdayDate(state.data);
-    const calendarDate = state.selectedDate ? parseDate(state.selectedDate) : new Date();
+    const calendarDate = state.selectedDate ? parseDate(state.selectedDate) : parseDate(calendarBounds().end);
     state.calendarMonth = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
     render();
   } catch (error) {
@@ -630,7 +701,7 @@ async function init() {
       keywords: [],
       papers: [],
     };
-    state.calendarMonth = new Date();
+    state.calendarMonth = calendarBounds().maxMonth;
     render();
     els.paperList.innerHTML = '<div class="empty-state">Data unavailable</div>';
     console.error(error);

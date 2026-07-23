@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from dataclasses import replace
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 import threading
 import json
 import time
@@ -22,7 +22,7 @@ from config.settings import Settings, load_settings
 from daily_arxiv.database import PaperRow, cleanup_old_papers, init_db, save_summarized_papers_to_db
 from daily_arxiv.fetch_arxiv import fetch_arxiv_papers
 from daily_arxiv.run_state import PipelineAlreadyRunning, pipeline_lock
-from daily_arxiv.static_export import export_static_site_data, web_data_path
+from daily_arxiv.static_export import calendar_window_start, export_static_site_data, web_data_path
 from daily_arxiv.summary_ai import SummaryBatchPending, summarize_papers
 
 
@@ -73,11 +73,11 @@ def _parse_listing_date(date_str: str, settings: Settings) -> date:
         raise HTTPException(status_code=400, detail="date must use YYYY-MM-DD format") from exc
 
     today = _today(settings)
-    cutoff = today - timedelta(days=settings.database_retention_days)
+    cutoff = calendar_window_start(today, days=settings.web_export_days)
     if value > today:
         raise HTTPException(status_code=400, detail="future dates are not available")
     if value < cutoff:
-        raise HTTPException(status_code=400, detail="date is outside the retention window")
+        raise HTTPException(status_code=400, detail="date is outside the calendar window")
     if value.weekday() >= 5:
         raise HTTPException(status_code=400, detail="arXiv has no regular weekend listing")
     return value
