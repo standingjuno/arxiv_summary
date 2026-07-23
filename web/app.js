@@ -53,6 +53,63 @@ const categoryLabels = {
   'cs.CV': 'Computer Vision',
 };
 
+const superscriptChars = {
+  0: '⁰',
+  1: '¹',
+  2: '²',
+  3: '³',
+  4: '⁴',
+  5: '⁵',
+  6: '⁶',
+  7: '⁷',
+  8: '⁸',
+  9: '⁹',
+  '+': '⁺',
+  '-': '⁻',
+  '=': '⁼',
+  '(': '⁽',
+  ')': '⁾',
+  n: 'ⁿ',
+  i: 'ⁱ',
+};
+
+const subscriptChars = {
+  0: '₀',
+  1: '₁',
+  2: '₂',
+  3: '₃',
+  4: '₄',
+  5: '₅',
+  6: '₆',
+  7: '₇',
+  8: '₈',
+  9: '₉',
+  '+': '₊',
+  '-': '₋',
+  '=': '₌',
+  '(': '₍',
+  ')': '₎',
+};
+
+const latexSymbols = {
+  '\\alpha': 'α',
+  '\\beta': 'β',
+  '\\gamma': 'γ',
+  '\\delta': 'δ',
+  '\\epsilon': 'ε',
+  '\\lambda': 'λ',
+  '\\mu': 'μ',
+  '\\pi': 'π',
+  '\\sigma': 'σ',
+  '\\theta': 'θ',
+  '\\times': '×',
+  '\\cdot': '·',
+  '\\pm': '±',
+  '\\leq': '≤',
+  '\\geq': '≥',
+  '\\infty': '∞',
+};
+
 function normalizeApiBaseUrl(value) {
   return String(value || '').trim().replace(/\/+$/, '');
 }
@@ -66,6 +123,49 @@ function apiUrl(path) {
     return null;
   }
   return `${state.apiBaseUrl}${path}`;
+}
+
+function mapScriptText(value, map) {
+  return [...String(value || '')].map((char) => map[char] || char).join('');
+}
+
+function unwrapLatexCommands(value) {
+  let text = value;
+  for (let index = 0; index < 4; index += 1) {
+    const next = text.replace(
+      /\\(?:text|mathrm|mathbf|mathtt|mathcal|mathbb|operatorname)\{([^{}]*)\}/g,
+      '$1',
+    );
+    if (next === text) {
+      break;
+    }
+    text = next;
+  }
+  return text;
+}
+
+function normalizeLatexMath(value) {
+  let text = unwrapLatexCommands(String(value || '').trim());
+  text = text.replace(/\^\s*\{?\s*\\circ\s*\}?/g, '°');
+  text = text.replace(/\^\{([^{}]+)\}/g, (_, inner) => mapScriptText(unwrapLatexCommands(inner), superscriptChars));
+  text = text.replace(/\^([A-Za-z0-9+\-=()])/g, (_, inner) => mapScriptText(inner, superscriptChars));
+  text = text.replace(/_\{([^{}]+)\}/g, (_, inner) => mapScriptText(unwrapLatexCommands(inner), subscriptChars));
+  text = text.replace(/_([A-Za-z0-9+\-=()])/g, (_, inner) => mapScriptText(inner, subscriptChars));
+
+  for (const [source, replacement] of Object.entries(latexSymbols)) {
+    text = text.replaceAll(source, replacement);
+  }
+
+  return text
+    .replace(/\\(?:text|mathrm|mathbf|mathtt|mathcal|mathbb|operatorname)\s*/g, '')
+    .replace(/\\([#$%&_^{}])/g, '$1')
+    .replace(/\\([A-Za-z]+)/g, '$1')
+    .replace(/[{}]/g, '')
+    .trim();
+}
+
+function formatAcademicText(value) {
+  return String(value || '').replace(/\$([^$]+)\$/g, (_, math) => normalizeLatexMath(math));
 }
 
 function parseDate(dateString) {
@@ -397,19 +497,19 @@ function renderPaperCard(paper) {
   article.append(meta);
 
   const title = document.createElement('h3');
-  title.textContent = paper.title;
+  title.textContent = formatAcademicText(paper.title);
   article.append(title);
 
   if (paper.title_kor) {
     const koreanTitle = document.createElement('p');
     koreanTitle.className = 'translated-title';
-    koreanTitle.textContent = paper.title_kor;
+    koreanTitle.textContent = formatAcademicText(paper.title_kor);
     article.append(koreanTitle);
   }
 
   const summary = document.createElement('p');
   summary.className = 'summary';
-  summary.textContent = paper.summary;
+  summary.textContent = formatAcademicText(paper.summary);
   article.append(summary);
 
   const footer = document.createElement('div');
