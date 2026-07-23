@@ -689,9 +689,15 @@ def summarize_papers_batch_openai(
                 batch_id=batch_id,
                 status=status,
             )
-        raise RuntimeError(
-            f"Summary batch ended with status={status} date={date_str} batch_id={batch_id}"
-        )
+        if status in RETRYABLE_TERMINAL_BATCH_STATUSES:
+            print(
+                f"[summary-batch] retrying terminal batch date={date_str} "
+                f"batch_id={batch_id} status={status}"
+            )
+        else:
+            raise RuntimeError(
+                f"Summary batch ended with status={status} date={date_str} batch_id={batch_id}"
+            )
 
     _create_summary_batch(
         settings=settings,
