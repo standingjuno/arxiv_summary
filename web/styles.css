@@ -216,17 +216,19 @@ input {
   pointer-events: none;
 }
 
-.date-count {
+.date-marker {
   position: absolute;
-  right: 5px;
-  bottom: 4px;
-  min-width: 15px;
-  height: 15px;
+  left: 50%;
+  bottom: 6px;
+  width: 6px;
+  height: 6px;
   border-radius: 999px;
   background: var(--accent);
-  color: #ffffff;
-  font-size: 10px;
-  line-height: 15px;
+  transform: translateX(-50%);
+}
+
+.date-cell.selected .date-marker {
+  background: #0f5269;
 }
 
 .search-input {
@@ -440,12 +442,16 @@ input {
   letter-spacing: 0;
 }
 
-.original-title,
+.translated-title,
 .summary {
   margin: 10px 0 0;
   color: var(--muted);
   font-size: 14px;
   line-height: 1.55;
+}
+
+.translated-title {
+  color: #526173;
 }
 
 .summary {

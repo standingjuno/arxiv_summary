@@ -11,7 +11,7 @@ const state = {
   data: null,
   category: 'all',
   selectedDate: null,
-  selectedKeywords: new Set(),
+  selectedKeyword: null,
   keywordQuery: '',
   calendarMonth: null,
   apiBaseUrl: normalizeApiBaseUrl(runtimeConfig.apiBaseUrl || ''),
@@ -191,11 +191,58 @@ function canRequestOnDemand(dateString) {
   return !info.is_weekend && dateIsInRange(dateString) && !hasPapersForDate(dateString);
 }
 
+function papersForSelectedDate() {
+  const papers = state.data?.papers || [];
+  if (!state.selectedDate) {
+    return papers;
+  }
+  return papers.filter((paper) => paper.listing_date === state.selectedDate);
+}
+
+function paperMatchesCategory(paper, category) {
+  if (category === 'all') {
+    return true;
+  }
+  const categories = new Set([...(paper.matched_categories || []), ...(paper.arxiv_categories || [])]);
+  return categories.has(category);
+}
+
+function countPapersForCategory(papers, category) {
+  return papers.filter((paper) => paperMatchesCategory(paper, category)).length;
+}
+
+function keywordCountsForPapers(papers) {
+  const counts = new Map();
+  for (const paper of papers) {
+    for (const keyword of paper.keywords || []) {
+      counts.set(keyword, (counts.get(keyword) || 0) + 1);
+    }
+  }
+  return counts;
+}
+
+function normalizeScopedFilters() {
+  const scopedPapers = papersForSelectedDate();
+  if (state.category !== 'all' && countPapersForCategory(scopedPapers, state.category) === 0) {
+    state.category = 'all';
+  }
+  if (state.selectedKeyword) {
+    const keywordCounts = keywordCountsForPapers(scopedPapers);
+    if (!keywordCounts.has(state.selectedKeyword)) {
+      state.selectedKeyword = null;
+    }
+  }
+}
+
 function renderCategoryNav() {
+  const scopedPapers = papersForSelectedDate();
   const categories = state.data.categories || [];
   const buttons = [
-    { category: 'all', label: 'All', count: state.data.papers.length },
-    ...categories,
+    { category: 'all', label: 'All', count: scopedPapers.length },
+    ...categories.map((item) => ({
+      ...item,
+      count: countPapersForCategory(scopedPapers, item.category),
+    })),
   ];
 
   els.categoryNav.innerHTML = '';
@@ -268,10 +315,10 @@ function renderCalendar() {
     }
 
     if (info.count > 0) {
-      const count = document.createElement('span');
-      count.className = 'date-count';
-      count.textContent = String(info.count);
-      button.append(count);
+      const marker = document.createElement('span');
+      marker.className = 'date-marker';
+      marker.setAttribute('aria-hidden', 'true');
+      button.append(marker);
     }
 
     els.calendarGrid.append(button);
@@ -280,7 +327,9 @@ function renderCalendar() {
 
 function renderKeywords() {
   const query = state.keywordQuery.trim().toLowerCase();
-  const keywords = (state.data.keywords || [])
+  const keywordCounts = keywordCountsForPapers(papersForSelectedDate());
+  const keywords = [...keywordCounts.entries()]
+    .map(([name, count]) => ({ name, count }))
     .filter((item) => item.name.toLowerCase().includes(query))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
     .slice(0, 80);
@@ -289,14 +338,10 @@ function renderKeywords() {
   for (const keyword of keywords) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `keyword-chip${state.selectedKeywords.has(keyword.name) ? ' active' : ''}`;
+    button.className = `keyword-chip${state.selectedKeyword === keyword.name ? ' active' : ''}`;
     button.textContent = keyword.count > 0 ? `${keyword.name} ${keyword.count}` : keyword.name;
     button.addEventListener('click', () => {
-      if (state.selectedKeywords.has(keyword.name)) {
-        state.selectedKeywords.delete(keyword.name);
-      } else {
-        state.selectedKeywords.add(keyword.name);
-      }
+      state.selectedKeyword = state.selectedKeyword === keyword.name ? null : keyword.name;
       render();
     });
     els.keywordList.append(button);
@@ -304,21 +349,16 @@ function renderKeywords() {
 }
 
 function paperMatches(paper) {
-  if (state.category !== 'all') {
-    const categories = new Set([...(paper.matched_categories || []), ...(paper.arxiv_categories || [])]);
-    if (!categories.has(state.category)) {
-      return false;
-    }
-  }
-
   if (state.selectedDate && paper.listing_date !== state.selectedDate) {
     return false;
   }
 
-  for (const keyword of state.selectedKeywords) {
-    if (!(paper.keywords || []).includes(keyword)) {
-      return false;
-    }
+  if (!paperMatchesCategory(paper, state.category)) {
+    return false;
+  }
+
+  if (state.selectedKeyword && !(paper.keywords || []).includes(state.selectedKeyword)) {
+    return false;
   }
 
   return true;
@@ -357,13 +397,15 @@ function renderPaperCard(paper) {
   article.append(meta);
 
   const title = document.createElement('h3');
-  title.textContent = paper.title_kor || paper.title;
+  title.textContent = paper.title;
   article.append(title);
 
-  const originalTitle = document.createElement('p');
-  originalTitle.className = 'original-title';
-  originalTitle.textContent = paper.title;
-  article.append(originalTitle);
+  if (paper.title_kor) {
+    const koreanTitle = document.createElement('p');
+    koreanTitle.className = 'translated-title';
+    koreanTitle.textContent = paper.title_kor;
+    article.append(koreanTitle);
+  }
 
   const summary = document.createElement('p');
   summary.className = 'summary';
@@ -395,7 +437,7 @@ function renderPaperCard(paper) {
 function renderPapers() {
   const papers = state.data.papers.filter(paperMatches);
   const selectedCategory = state.category === 'all' ? 'All' : state.category;
-  const keywordText = [...state.selectedKeywords].join(', ');
+  const keywordText = state.selectedKeyword || '';
 
   els.activeFilterText.textContent = [
     selectedCategory,
@@ -464,6 +506,7 @@ function renderLiveStatus() {
 }
 
 function render() {
+  normalizeScopedFilters();
   renderMeta();
   renderCategoryNav();
   renderCalendar();
@@ -655,6 +698,7 @@ function selectDate(dateString) {
     return;
   }
   state.selectedDate = dateString;
+  normalizeScopedFilters();
   render();
   startOnDemand(dateString);
 }
@@ -664,10 +708,11 @@ function bindEvents() {
   els.nextMonthButton.addEventListener('click', () => moveMonth(1));
   els.allDatesButton.addEventListener('click', () => {
     state.selectedDate = null;
+    normalizeScopedFilters();
     render();
   });
   els.clearKeywordsButton.addEventListener('click', () => {
-    state.selectedKeywords.clear();
+    state.selectedKeyword = null;
     state.keywordQuery = '';
     els.keywordSearchInput.value = '';
     render();

@@ -78,8 +78,6 @@ class SummaryResult(BaseModel):
             keyword = str(item).strip()
             if keyword and keyword not in cleaned:
                 cleaned.append(keyword)
-        if not cleaned:
-            raise ValueError("at least one keyword is required")
         return cleaned[:5]
 
 
@@ -96,6 +94,4 @@ class SummarizedPaper(RawPaper):
             keyword = item.strip()
             if keyword and keyword not in cleaned:
                 cleaned.append(keyword)
-        if not cleaned:
-            raise ValueError("at least one keyword is required")
         return cleaned

@@ -227,8 +227,6 @@ def _summarized_paper_from_json_content(
 ) -> SummarizedPaper:
     result = SummaryResult.model_validate(_load_json_object(content))
     keywords = keyword_store.update(result.keywords)
-    if not keywords:
-        raise ValueError("Canonicalized keyword count is zero.")
     return SummarizedPaper(
         **paper.model_dump(mode="json"),
         title_kor=result.title_kor,
