@@ -78,9 +78,9 @@ class SummaryResult(BaseModel):
             keyword = str(item).strip()
             if keyword and keyword not in cleaned:
                 cleaned.append(keyword)
-        if len(cleaned) != 5:
-            raise ValueError("exactly five unique keywords are required")
-        return cleaned
+        if not cleaned:
+            raise ValueError("at least one keyword is required")
+        return cleaned[:5]
 
 
 class SummarizedPaper(RawPaper):
@@ -91,7 +91,11 @@ class SummarizedPaper(RawPaper):
     @field_validator("keywords")
     @classmethod
     def _validate_paper_keywords(cls, value: list[str]) -> list[str]:
-        cleaned = [keyword.strip() for keyword in value if keyword.strip()]
-        if len(cleaned) != 5:
-            raise ValueError("exactly five keywords are required")
+        cleaned: list[str] = []
+        for item in value:
+            keyword = item.strip()
+            if keyword and keyword not in cleaned:
+                cleaned.append(keyword)
+        if not cleaned:
+            raise ValueError("at least one keyword is required")
         return cleaned

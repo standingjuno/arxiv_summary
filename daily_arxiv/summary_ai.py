@@ -33,13 +33,14 @@ Required JSON schema:
 {
   "title_kor": "Korean translation of the original title",
   "summary": "One concise Korean sentence summarizing the abstract",
-  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
+  "keywords": ["keyword1", "keyword2", "keyword3"]
 }
 
 Rules:
 - Keep the original title out of title_kor.
 - summary must be exactly one Korean sentence.
-- keywords must be exactly five concise technical keywords.
+- keywords must be one to five concise technical keywords.
+- Fewer than five keywords are acceptable when only a smaller set is meaningful after reuse and canonicalization.
 - Reuse an existing keyword when it has the same or a very similar meaning.
 - Create a new keyword only when no existing keyword is suitable.
 - Prefer canonical acronyms and short labels when they are listed, such as SLAM, LiDAR, LIO, LO, LLM, VLM, VLN, VLA, RL, and IL.
@@ -224,8 +225,8 @@ def _summarized_paper_from_json_content(
 ) -> SummarizedPaper:
     result = SummaryResult.model_validate(_load_json_object(content))
     keywords = keyword_store.update(result.keywords)
-    if len(keywords) != 5:
-        raise ValueError("Canonicalized keyword count is not five.")
+    if not keywords:
+        raise ValueError("Canonicalized keyword count is zero.")
     return SummarizedPaper(
         **paper.model_dump(mode="json"),
         title_kor=result.title_kor,

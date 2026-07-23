@@ -29,7 +29,7 @@ main.py
   - 기본값은 OpenAI Batch API 호출
   - `ai.mode = "sync"`로 바꾸면 기존 Chat Completions 동기 호출도 가능
   - 기본 모델은 `gpt-5.4-nano`
-  - 원문 제목, 한국어 제목, 한국어 1문장 요약, 키워드 5개 생성
+  - 원문 제목, 한국어 제목, 한국어 1문장 요약, 키워드 최대 5개 생성
   - batch 입력/상태/출력 파일 저장:
     - `output/batches/summary_batch_YYYY-MM-DD.input.jsonl`
     - `output/batches/summary_batch_YYYY-MM-DD.state.json`

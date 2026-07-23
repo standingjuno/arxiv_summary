@@ -5,7 +5,7 @@ arXiv 논문을 매일 수집하고, AI로 한국어 요약/키워드 정리를 
 현재 범위는 3단계입니다.
 
 1. arXiv API로 논문 메타데이터와 abstract 수집
-2. OpenAI Batch API로 제목 번역, 1줄 요약, 키워드 5개 생성
+2. OpenAI Batch API로 제목 번역, 1줄 요약, 키워드 최대 5개 생성
 3. 요약 결과를 데이터베이스에 저장
 
 추가로 GitHub Pages용 정적 웹과, 빈 날짜를 선택했을 때 서버에서 실시간 백필을 수행하는 FastAPI API가 붙어 있습니다.
@@ -296,7 +296,7 @@ Docker Compose 운영에서는 `database.url`이 Postgres를 바라보므로 SQL
 - `title`: 원문 제목
 - `title_kor`: 한국어 제목
 - `summary`: abstract 기반 한국어 1문장 요약
-- `keywords`: 키워드 5개 JSON 문자열
+- `keywords`: 키워드 최대 5개 JSON 문자열
 - `field`: 대표 필드. 기본값은 `robotics`, `machine_learning`, `computer_vision` 중 하나입니다.
 - `fields`: 논문이 속한 프로젝트 필드 목록 JSON 문자열
 - `link`: arXiv 링크
