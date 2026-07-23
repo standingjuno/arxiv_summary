@@ -1,0 +1,40 @@
+{
+  "generated_at": null,
+  "timezone": "Asia/Seoul",
+  "base_path": "/arxiv_summary/",
+  "api_base_url": "",
+  "on_demand_enabled": true,
+  "retention_days": 365,
+  "range": {
+    "start": null,
+    "end": null,
+    "days": 365
+  },
+  "categories": [
+    {
+      "category": "cs.RO",
+      "field": "robotics",
+      "label": "Robotics",
+      "field_label": "Robotics",
+      "count": 0
+    },
+    {
+      "category": "cs.LG",
+      "field": "machine_learning",
+      "label": "Machine Learning",
+      "field_label": "Machine Learning",
+      "count": 0
+    },
+    {
+      "category": "cs.CV",
+      "field": "computer_vision",
+      "label": "Computer Vision",
+      "field_label": "Computer Vision",
+      "count": 0
+    }
+  ],
+  "fields": [],
+  "dates": [],
+  "keywords": [],
+  "papers": []
+}

@@ -1,0 +1,64 @@
+name: arxiv_summary
+
+services:
+  arxiv-summary:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: arxiv-summary:latest
+    container_name: arxiv-summary
+    user: "${ARXIV_SUMMARY_UID:-1000}:${ARXIV_SUMMARY_GID:-1000}"
+    environment:
+      TZ: Asia/Seoul
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ../config:/app/config:ro
+      - ../output:/app/output
+      - ../web:/app/web
+    command: ["./docker/run_daily.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: arxiv-summary:latest
+    container_name: arxiv-summary-api
+    user: "${ARXIV_SUMMARY_UID:-1000}:${ARXIV_SUMMARY_GID:-1000}"
+    environment:
+      TZ: Asia/Seoul
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ../config:/app/config:ro
+      - ../output:/app/output
+      - ../web:/app/web
+    command: ["uvicorn", "daily_arxiv.api:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "${DAILY_ARXIV_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: arxiv-summary-postgres
+    environment:
+      TZ: Asia/Seoul
+      POSTGRES_USER: arxiv_summary
+      POSTGRES_PASSWORD: change-this-password
+      POSTGRES_DB: arxiv_summary
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

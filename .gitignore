@@ -1,8 +1,17 @@
 .env
+*.env
+
+config/settings.toml
+config/*.local.toml
 
 output/
 *.json
+!web/data/
+!web/data/*.json
 *.xlsx
+*.db
+*.sqlite
+*.sqlite3
  
 logs/
 *.log

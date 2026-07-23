@@ -1,0 +1,112 @@
+# Copy this file to config/settings.toml and fill in the values for your server.
+
+[app]
+timezone = "Asia/Seoul"
+output_dir = "output"
+debug = false
+
+[arxiv]
+categories = ["cs.RO", "cs.LG", "cs.CV"]
+max_results = 2000
+page_size = 100
+delay_seconds = 5.0
+min_request_interval = 5.0
+retry_delays = [30.0, 60.0, 180.0, 600.0]
+
+[fields]
+"cs.RO" = "robotics"
+"cs.LG" = "machine_learning"
+"cs.CV" = "computer_vision"
+"stat.ML" = "machine_learning"
+"cs.AI" = "machine_learning"
+"cs.CL" = "machine_learning"
+
+[keywords]
+seed = [
+  "SLAM",
+  "LiDAR",
+  "LIO",
+  "LO",
+  "Retargeting",
+  "LLM",
+  "VLM",
+  "VLN",
+  "VLA",
+  "RL",
+  "IL",
+  "Diffusion",
+  "Manipulation",
+  "Navigation",
+  "Sim2Real",
+  "Foundation Model",
+]
+
+[keywords.aliases]
+"Robot Retargeting" = "Retargeting"
+"Vision-Language Model" = "VLM"
+"Vision Language Model" = "VLM"
+"Vision-Language Models" = "VLM"
+"Vision Language Models" = "VLM"
+"Vision-Language Navigation" = "VLN"
+"Vision Language Navigation" = "VLN"
+"Visual Language Navigation" = "VLN"
+"Vision-Language-Action" = "VLA"
+"Vision Language Action" = "VLA"
+"Vision-Language-Action Model" = "VLA"
+"Vision Language Action Model" = "VLA"
+"Large Language Model" = "LLM"
+"Large Language Models" = "LLM"
+"Reinforcement Learning" = "RL"
+"Imitation Learning" = "IL"
+"Diffusion Policy" = "Diffusion"
+"Diffusion Model" = "Diffusion"
+"Diffusion Models" = "Diffusion"
+
+[ai]
+provider = "openai"
+mode = "batch"
+openai_api_key = ""
+openai_model = "gpt-5.4-nano"
+openai_batch_completion_window = "24h"
+openai_batch_poll_interval_seconds = 60.0
+openai_batch_wait_timeout_seconds = 0.0
+summary_sleep_seconds = 0.5
+summary_max_retries = 3
+
+[database]
+url = "postgresql+psycopg://arxiv_summary:change-this-password@postgres:5432/arxiv_summary"
+retention_days = 365
+auto_cleanup = true
+
+[web]
+output_dir = "web"
+base_path = "/arxiv_summary/"
+api_base_url = ""
+export_days = 365
+auto_export = true
+
+[api]
+host = "0.0.0.0"
+port = 8000
+cors_origins = [
+  "https://standingjuno.github.io",
+  "http://localhost:8765",
+  "http://127.0.0.1:8765",
+]
+on_demand_enabled = true
+on_demand_summary_mode = "sync"
+on_demand_max_papers = 600
+
+[paths]
+keyword_store = "output/keywords.json"
+pipeline_lock = "output/pipeline.lock"
+failed_runs = "output/failed_runs.json"
+batches = "output/batches"
+
+[daily]
+run_hour = 11
+run_minute = 0
+step = "all"
+date_offset_days = 0
+retry_failed = true
+run_on_start = false

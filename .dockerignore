@@ -1,0 +1,15 @@
+.DS_Store
+.env
+config/settings.toml
+config/*.local.toml
+.git/
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+output/
+logs/
+*.log
+*.xlsx

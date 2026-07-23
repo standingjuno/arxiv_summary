@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>arxiv_summary</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1>arxiv_summary</h1>
+        <p id="metaText">loading</p>
+      </div>
+      <nav id="categoryNav" class="category-nav" aria-label="arXiv categories"></nav>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Date</h2>
+            <button id="allDatesButton" class="text-button" type="button">All dates</button>
+          </div>
+          <div class="calendar-head">
+            <button id="prevMonthButton" class="icon-button" type="button" aria-label="Previous month">‹</button>
+            <strong id="calendarTitle"></strong>
+            <button id="nextMonthButton" class="icon-button" type="button" aria-label="Next month">›</button>
+          </div>
+          <div class="weekday-row" aria-hidden="true">
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+            <span>Sun</span>
+          </div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">
+            <h2>Keywords</h2>
+            <button id="clearKeywordsButton" class="text-button" type="button">Clear</button>
+          </div>
+          <input id="keywordSearchInput" class="search-input" type="search" placeholder="Keyword search" autocomplete="off">
+          <div id="keywordList" class="keyword-list"></div>
+        </section>
+      </aside>
+
+      <section class="content">
+        <div class="result-head">
+          <div>
+            <p id="activeFilterText" class="eyebrow">All</p>
+            <h2 id="resultTitle">Papers</h2>
+          </div>
+          <p id="resultCount" class="count-text">0 papers</p>
+        </div>
+        <div id="liveStatus" class="live-status hidden" role="status" aria-live="polite">
+          <div class="live-spinner" aria-hidden="true"></div>
+          <div class="live-copy">
+            <strong id="liveStatusTitle">Loading</strong>
+            <p id="liveStatusMessage">Preparing</p>
+            <div class="live-track" aria-hidden="true">
+              <span id="liveProgressBar"></span>
+            </div>
+          </div>
+          <div id="liveProgress" class="live-progress">0%</div>
+        </div>
+        <div id="paperList" class="paper-list"></div>
+      </section>
+    </main>
+
+    <script src="./config.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
