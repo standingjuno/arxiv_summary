@@ -219,7 +219,7 @@ input {
 .date-marker {
   position: absolute;
   left: 50%;
-  bottom: 6px;
+  bottom: 4px;
   width: 6px;
   height: 6px;
   border-radius: 999px;
