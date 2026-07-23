@@ -23,7 +23,13 @@ from daily_arxiv.database import PaperRow, cleanup_old_papers, init_db, save_sum
 from daily_arxiv.fetch_arxiv import fetch_arxiv_papers
 from daily_arxiv.run_state import PipelineAlreadyRunning, pipeline_lock
 from daily_arxiv.static_export import calendar_window_start, export_static_site_data, web_data_path
-from daily_arxiv.summary_ai import SummaryBatchPending, finalize_completed_summary_batches, summarize_papers
+from daily_arxiv.summary_ai import (
+    ACTIVE_BATCH_STATUSES,
+    RETRYABLE_TERMINAL_BATCH_STATUSES,
+    SummaryBatchPending,
+    finalize_completed_summary_batches,
+    summarize_papers,
+)
 
 
 class DateRunResponse(BaseModel):
@@ -127,6 +133,37 @@ def _create_or_get_job(date_str: str) -> tuple[str, dict[str, object], bool]:
         return job_id, job, True
 
 
+def _load_summary_batch_state(settings: Settings, date_str: str) -> dict[str, object] | None:
+    path = settings.batch_dir / f"summary_batch_{date_str}.state.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, dict) else None
+
+
+def _active_summary_batch_dates(settings: Settings, *, exclude: str | None = None) -> list[str]:
+    active_dates: list[str] = []
+    for path in sorted(settings.batch_dir.glob("summary_batch_*.state.json")):
+        state = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(state, dict):
+            continue
+        date_str = str(state.get("date") or "").strip()
+        if not date_str or date_str == exclude:
+            continue
+        if str(state.get("status") or "") in ACTIVE_BATCH_STATUSES:
+            active_dates.append(date_str)
+    return active_dates
+
+
+def _start_on_demand_thread(job_id: str, date_str: str) -> None:
+    thread = threading.Thread(
+        target=_run_on_demand_job,
+        args=(job_id, date_str),
+        daemon=True,
+    )
+    thread.start()
+
+
 def _clear_date_job_if_terminal(job_id: str, date_str: str) -> None:
     with _jobs_lock:
         status = _jobs.get(job_id, {}).get("status")
@@ -171,6 +208,28 @@ def _refresh_pending_job(job_id: str) -> None:
                     error=None,
                 )
                 _clear_date_job_if_terminal(job_id, date_str)
+                return
+
+            state = _load_summary_batch_state(job_settings, date_str) or {}
+            status = str(state.get("status") or "")
+            active_dates = _active_summary_batch_dates(job_settings, exclude=date_str)
+            if status in RETRYABLE_TERMINAL_BATCH_STATUSES and not active_dates:
+                _set_job(
+                    job_id,
+                    status="queued",
+                    progress=20,
+                    message="Retrying OpenAI batch",
+                    error=None,
+                )
+                _start_on_demand_thread(job_id, date_str)
+            elif status in RETRYABLE_TERMINAL_BATCH_STATUSES:
+                _set_job(
+                    job_id,
+                    status="pending",
+                    progress=40,
+                    message=f"Waiting for OpenAI batch queue ({', '.join(active_dates[:3])})",
+                    error=None,
+                )
             else:
                 _set_job(
                     job_id,
@@ -221,6 +280,27 @@ def _run_on_demand_job(job_id: str, date_str: str) -> None:
                     progress=100,
                     message="Already available",
                     paper_count=existing_count,
+                )
+                return
+
+            current_state = _load_summary_batch_state(job_settings, date_str) or {}
+            current_status = str(current_state.get("status") or "")
+            if current_status in ACTIVE_BATCH_STATUSES:
+                _set_job(
+                    job_id,
+                    status="pending",
+                    progress=60,
+                    message=f"OpenAI batch is still processing ({current_status})",
+                )
+                return
+
+            active_dates = _active_summary_batch_dates(job_settings, exclude=date_str)
+            if active_dates:
+                _set_job(
+                    job_id,
+                    status="pending",
+                    progress=20,
+                    message=f"Waiting for OpenAI batch queue ({', '.join(active_dates[:3])})",
                 )
                 return
 
@@ -316,12 +396,7 @@ def run_date(date_str: str) -> DateRunResponse:
 
     job_id, job, created = _create_or_get_job(normalized_date)
     if created:
-        thread = threading.Thread(
-            target=_run_on_demand_job,
-            args=(job_id, normalized_date),
-            daemon=True,
-        )
-        thread.start()
+        _start_on_demand_thread(job_id, normalized_date)
     return DateRunResponse(job_id=job_id, **job)
 
 

@@ -1,5 +1,5 @@
 const DATA_URL = './data/site-data.json';
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 10000;
 const DEFAULT_TIMEZONE = 'Asia/Seoul';
 const DEFAULT_CALENDAR_MONTHS = 12;
 
