@@ -9,11 +9,4 @@ else
   python main.py --step export-web
 fi
 
-if git diff --quiet -- web/data/site-data.json; then
-  echo "[publish-web] no web data changes"
-  exit 0
-fi
-
-git add web/data/site-data.json
-git commit -m "Update arXiv web data $(date +%F)"
-git push origin HEAD
+./tools/deploy_blog_page.sh

@@ -94,10 +94,11 @@ main.py
   - `.gitignore`와 `.dockerignore` 대상
   - `ai.openai_api_key`는 여기 채워야 함
 
-- `docker/Dockerfile`, `docker/docker-compose.yml`, `docker/run_daily.sh`
+- `docker/Dockerfile`, `docker/docker-compose.yml`, `docker/Caddyfile`, `docker/run_daily.sh`
   - 서버 상시 실행 구성
   - Postgres 컨테이너 포함
   - `api` 서비스 추가: `daily_arxiv.api:app`을 uvicorn으로 실행, 기본 host port `8000`
+  - `caddy` 서비스 추가: `https://arxiv-summary.221.155.32.232.sslip.io`에서 `/api/*`, `/health`는 `api:8000`으로 reverse proxy하고 `/arxiv_summary/`는 `web/` 정적 파일을 serve
   - `restart: unless-stopped`
   - 기본 daily run 시간은 KST 11:00
   - 매 실행 전 실패 큐 재시도
@@ -125,15 +126,20 @@ main.py
 
 - `web/config.js`
   - 공개 API URL 설정 파일
-  - 예: `apiBaseUrl: "https://your-api-domain.example"`
+  - 예: `apiBaseUrl: "https://arxiv-summary.221.155.32.232.sslip.io"`
 
 - `.github/workflows/pages.yml`
   - `web/` 폴더를 GitHub Pages artifact로 배포
-  - GitHub repo Settings > Pages에서 source를 GitHub Actions로 설정해야 함
+  - 별도 `standingjuno/arxiv_summary` 저장소를 만들 경우 GitHub repo Settings > Pages에서 source를 GitHub Actions로 설정하면 Jekyll 없이 배포 가능
 
 - `tools/publish_web.sh`
   - 서버에서 `docker compose -f docker/docker-compose.yml run --rm arxiv-summary python main.py --step export-web` 실행
-  - 변경된 `web/data/site-data.json`만 커밋/푸시
+  - 이후 `tools/deploy_blog_page.sh`를 호출해 `web/` 전체를 블로그 저장소의 `arxiv_summary/` 폴더로 push
+
+- `tools/deploy_blog_page.sh`
+  - Jekyll을 설치/실행하지 않고 `web/` 정적 파일만 `standingjuno/standingjuno.github.io`의 `arxiv_summary/` 폴더로 복사
+  - 기본 URL: `https://standingjuno.github.io/arxiv_summary/`
+  - 환경변수: `BLOG_REPO_URL`, `BLOG_BRANCH`, `BLOG_SUBDIR`, `COMMIT_MESSAGE`
 
 ## DB 스키마
 
@@ -188,7 +194,10 @@ main.py
 - GitHub Pages는 DB에 직접 접근하지 않는다. 반드시 서버에서 DB를 `web/data/site-data.json`으로 export한 뒤 push해야 웹 데이터가 갱신된다.
 - 단, `web/config.js` 또는 `site-data.json`에 `api_base_url`이 들어 있으면 Pages UI가 서버 API를 호출해 빈 날짜를 실시간으로 백필할 수 있다.
 - GitHub Pages가 HTTPS이므로 API도 실사용에서는 HTTPS로 노출해야 브라우저 mixed content 차단을 피할 수 있다.
+- 현재 API 도메인: `https://arxiv-summary.221.155.32.232.sslip.io`
+- 서버 미러 웹: `https://arxiv-summary.221.155.32.232.sslip.io/arxiv_summary/`
 - 목표 Pages 주소는 `https://standingjuno.github.io/arxiv_summary/`이다. 일반적인 project Pages 구성을 쓰려면 GitHub 저장소 이름을 `arxiv_summary`로 맞춘다.
+- 현재 `standingjuno/arxiv_summary` 저장소는 없어서, 실제 공개 배포는 `standingjuno/standingjuno.github.io` 저장소의 `arxiv_summary/` 하위 폴더에 정적 파일을 복사하는 방식이다. 해당 페이지 파일 자체는 Jekyll front matter/layout/include를 쓰지 않는다.
 - 키워드 재사용은 현재 두 층이다.
   - 프롬프트에서 기존 키워드 목록을 제공하고 재사용을 지시
   - 코드에서 alias를 먼저 canonical keyword로 바꾼 뒤 normalized keyword가 같으면 기존 표기를 재사용
@@ -207,6 +216,7 @@ Docker 기준 명령:
 docker compose -f docker/docker-compose.yml up -d --build
 docker compose -f docker/docker-compose.yml logs -f arxiv-summary
 docker compose -f docker/docker-compose.yml logs -f api
+docker compose -f docker/docker-compose.yml logs -f caddy
 ```
 
 DB 초기화:
@@ -229,7 +239,8 @@ docker compose -f docker/docker-compose.yml run --rm arxiv-summary python main.p
 4. batch 완료 후 다음 실행에서 summary JSON과 DB 저장 확인
 5. 웹/API 운영 연결
    - GitHub Pages source를 GitHub Actions로 설정
-   - GitHub 저장소 이름과 Pages URL을 `standingjuno/arxiv_summary`, `standingjuno.github.io/arxiv_summary/` 기준으로 맞추기
+   - 현 방식은 `standingjuno.github.io` 저장소의 `arxiv_summary/` 하위 폴더에 `web/`을 복사
+   - 완전한 Jekyll-free repo 배포를 원하면 GitHub 저장소 이름과 Pages URL을 `standingjuno/arxiv_summary`, `standingjuno.github.io/arxiv_summary/` 기준으로 맞추기
    - API를 HTTPS로 노출하고 `web/config.js` 또는 `web.api_base_url`에 URL 입력
    - 실제 DB 데이터로 `python main.py --step export-web` 확인
    - `./tools/publish_web.sh`를 서버 cron/운영 플로우에 연결

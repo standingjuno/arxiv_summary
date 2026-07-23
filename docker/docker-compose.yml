@@ -36,11 +36,26 @@ services:
       - ../output:/app/output
       - ../web:/app/web
     command: ["uvicorn", "daily_arxiv.api:app", "--host", "0.0.0.0", "--port", "8000"]
-    ports:
-      - "${DAILY_ARXIV_API_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: arxiv-summary-caddy
+    environment:
+      ARXIV_SUMMARY_API_DOMAIN: "${ARXIV_SUMMARY_API_DOMAIN:-arxiv-summary.221.155.32.232.sslip.io}"
+    ports:
+      - "${ARXIV_SUMMARY_HTTP_PORT:-80}:80"
+      - "${ARXIV_SUMMARY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../web:/srv/web:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
     restart: unless-stopped
 
   postgres:
@@ -62,3 +77,5 @@ services:
 
 volumes:
   postgres-data:
+  caddy-data:
+  caddy-config:

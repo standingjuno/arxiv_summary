@@ -1,0 +1,19 @@
+{$ARXIV_SUMMARY_API_DOMAIN} {
+    encode zstd gzip
+
+    handle /api/* {
+        reverse_proxy api:8000
+    }
+
+    handle /health {
+        reverse_proxy api:8000
+    }
+
+    handle_path /arxiv_summary/* {
+        root * /srv/web
+        try_files {path} /index.html
+        file_server
+    }
+
+    redir / /arxiv_summary/ 302
+}

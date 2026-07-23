@@ -30,6 +30,7 @@ arxiv_summary/
 ├── docker/
 │   ├── Dockerfile                  # Python 앱 이미지
 │   ├── docker-compose.yml          # arxiv-summary + Postgres 운영 구성
+│   ├── Caddyfile                   # HTTPS API reverse proxy
 │   └── run_daily.sh                # 컨테이너 내부 일일 실행 스케줄러
 ├── web/                            # GitHub Pages 정적 웹
 │   ├── index.html
@@ -37,7 +38,8 @@ arxiv_summary/
 │   ├── app.js
 │   ├── config.js                   # 공개 API 주소 주입
 │   └── data/site-data.json
-├── tools/publish_web.sh            # 웹 데이터 export 후 GitHub push
+├── tools/publish_web.sh            # 웹 데이터 export 후 블로그 하위 경로 배포
+├── tools/deploy_blog_page.sh       # Jekyll 없이 web/만 standingjuno.github.io/arxiv_summary/로 복사
 ├── .github/workflows/pages.yml     # GitHub Pages 배포 workflow
 ├── docs/HANDOFF.md                 # 다음 작업자를 위한 인수인계 기록
 └── requirements.txt
@@ -105,7 +107,7 @@ run_on_start = false
 [web]
 output_dir = "web"
 base_path = "/arxiv_summary/"
-api_base_url = "https://your-api-domain.example"
+api_base_url = "https://arxiv-summary.221.155.32.232.sslip.io"
 export_days = 365
 auto_export = true
 
@@ -149,12 +151,16 @@ categories = ["cs.RO", "cs.LG", "cs.CV", "stat.ML", "cs.CL", "cs.AI"]
 
 GitHub Pages는 정적 호스팅이라 OpenAI API나 DB를 직접 실행할 수 없습니다. 그래서 `standingjuno.github.io/arxiv_summary/`는 정적 UI를 담당하고, 서버의 `arxiv-summary-api` 컨테이너가 실시간 백필을 담당합니다.
 
+서버 Caddy도 같은 정적 웹을 `https://arxiv-summary.221.155.32.232.sslip.io/arxiv_summary/`에서 제공합니다. 이 주소는 `web/` 파일을 서버 디스크에서 바로 읽고 `/api/*`, `/health`만 FastAPI로 reverse proxy하므로 GitHub Pages 배포 지연과 무관하게 즉시 확인할 수 있습니다.
+
+이 페이지 자체는 Jekyll을 사용하지 않습니다. `web/` 안의 파일은 front matter, Liquid include, Jekyll layout 없이 순수 HTML/CSS/JS/JSON으로 동작합니다.
+
 공개 API 주소를 연결하는 방법은 둘 중 하나입니다.
 
 ```js
 // web/config.js
 window.ARXIV_SUMMARY_CONFIG = {
-  apiBaseUrl: 'https://your-api-domain.example',
+  apiBaseUrl: 'https://arxiv-summary.221.155.32.232.sslip.io',
 };
 ```
 
@@ -162,7 +168,7 @@ window.ARXIV_SUMMARY_CONFIG = {
 
 ```toml
 [web]
-api_base_url = "https://your-api-domain.example"
+api_base_url = "https://arxiv-summary.221.155.32.232.sslip.io"
 ```
 
 DB에서 웹 데이터를 수동으로 갱신:
@@ -177,13 +183,39 @@ export 후 GitHub Pages에 반영하려면 커밋/푸시가 필요합니다. 서
 ./tools/publish_web.sh
 ```
 
-이 스크립트는 Docker Compose 안에서 export를 실행해 Postgres에 접근한 뒤, `web/data/site-data.json`만 커밋하고 `origin`으로 push합니다.
+이 스크립트는 Docker Compose 안에서 export를 실행해 Postgres에 접근한 뒤, `web/` 전체를 `standingjuno/standingjuno.github.io` 저장소의 `arxiv_summary/` 폴더로 복사하고 push합니다. 로컬/서버에서 Jekyll을 설치하거나 실행하지 않습니다.
+
+정적 페이지만 다시 배포하려면 export 없이 아래 명령을 사용합니다.
+
+```bash
+./tools/deploy_blog_page.sh
+```
+
+환경변수로 대상 저장소와 하위 경로를 바꿀 수 있습니다.
+
+```bash
+BLOG_REPO_URL=git@github.com:standingjuno/standingjuno.github.io.git \
+BLOG_SUBDIR=arxiv_summary \
+./tools/deploy_blog_page.sh
+```
 
 ## GitHub Pages
 
-`.github/workflows/pages.yml`은 `web/` 폴더를 GitHub Pages로 배포합니다. GitHub 저장소 설정에서 Pages source를 `GitHub Actions`로 선택하면 push 때 자동 배포됩니다.
+현재 실제 공개 URL은 `standingjuno/standingjuno.github.io` 저장소의 하위 폴더 배포 방식으로 만듭니다.
 
-목표 GitHub Pages 주소는 `https://standingjuno.github.io/arxiv_summary/`입니다. 일반적인 project Pages 구성을 쓰려면 GitHub 저장소 이름을 `arxiv_summary`로 맞추면 됩니다.
+```text
+standingjuno/standingjuno.github.io
+└── arxiv_summary/
+    ├── index.html
+    ├── styles.css
+    ├── app.js
+    ├── config.js
+    └── data/site-data.json
+```
+
+목표 GitHub Pages 주소는 `https://standingjuno.github.io/arxiv_summary/`입니다.
+
+완전히 repo 단위로 Jekyll과 분리하고 싶으면 `standingjuno/arxiv_summary` 저장소를 새로 만들거나 기존 저장소 이름을 `arxiv_summary`로 변경하면 됩니다. 그 경우 `.github/workflows/pages.yml`이 `web/` 폴더를 GitHub Pages artifact로 배포하므로 Jekyll이 전혀 필요 없습니다.
 
 이번 웹은 상대 경로로 asset/data를 읽으므로 `arxiv_summary` 하위 경로에서도 그대로 동작합니다.
 
@@ -312,12 +344,20 @@ python main.py --step cleanup-db
 docker compose -f docker/docker-compose.yml up -d --build
 ```
 
+`docker/docker-compose.yml`은 다음 서비스를 올립니다.
+
+- `postgres`: 1년치 요약 데이터 저장
+- `api`: FastAPI 백필/조회 서버
+- `caddy`: `https://arxiv-summary.221.155.32.232.sslip.io` HTTPS reverse proxy와 `/arxiv_summary/` 정적 웹
+- `arxiv-summary`: 오전 11시 daily scheduler
+
 상태 확인:
 
 ```bash
 docker compose -f docker/docker-compose.yml ps
 docker compose -f docker/docker-compose.yml logs -f arxiv-summary
 docker compose -f docker/docker-compose.yml logs -f api
+docker compose -f docker/docker-compose.yml logs -f caddy
 ```
 
 DB 초기화:
