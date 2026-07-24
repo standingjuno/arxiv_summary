@@ -43,19 +43,20 @@ input {
   backdrop-filter: blur(16px);
 }
 
-.brand-row {
+.topbar-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-  min-width: 0;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .back-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 38px;
+  padding: 0 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--surface);
@@ -533,10 +534,9 @@ input {
     justify-content: flex-start;
   }
 
-  .brand-row {
+  .topbar-actions {
     align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
+    justify-content: flex-start;
   }
 
   .layout {
