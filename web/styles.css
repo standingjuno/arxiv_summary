@@ -43,6 +43,34 @@ input {
   backdrop-filter: blur(16px);
 }
 
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.back-link:hover {
+  border-color: var(--line-strong);
+  background: #f4f7fa;
+}
+
 .brand h1 {
   margin: 0;
   font-size: 24px;
@@ -503,6 +531,12 @@ input {
 
   .category-nav {
     justify-content: flex-start;
+  }
+
+  .brand-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .layout {
