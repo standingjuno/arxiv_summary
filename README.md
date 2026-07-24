@@ -39,7 +39,7 @@ arxiv_summary/
 │   ├── config.js                   # 공개 API 주소 주입
 │   └── data/site-data.json
 ├── tools/publish_web.sh            # 웹 데이터 export 후 블로그 하위 경로 배포
-├── tools/deploy_blog_page.sh       # Jekyll 없이 web/만 standingjuno.github.io/arxiv_summary/로 복사
+├── tools/deploy_blog_page.sh       # Jekyll 없이 web/만 standingjuno.github.io/paper/arxiv_summary/로 복사
 ├── .github/workflows/pages.yml     # GitHub Pages 배포 workflow
 ├── docs/HANDOFF.md                 # 다음 작업자를 위한 인수인계 기록
 └── requirements.txt
@@ -106,7 +106,7 @@ run_on_start = false
 
 [web]
 output_dir = "web"
-base_path = "/arxiv_summary/"
+base_path = "/paper/arxiv_summary/"
 api_base_url = "https://arxiv-summary.221.155.32.232.sslip.io"
 export_days = 365
 auto_export = true
@@ -150,9 +150,9 @@ categories = ["cs.RO", "cs.LG", "cs.CV", "stat.ML", "cs.CL", "cs.AI"]
 - 백필 중에는 원형 spinner와 진행률이 표시됨
 - 달력은 현재 월을 포함한 최근 12개월만 보여주며, 오늘 이후 날짜와 주말은 선택할 수 없음
 
-GitHub Pages는 정적 호스팅이라 OpenAI API나 DB를 직접 실행할 수 없습니다. 그래서 `standingjuno.github.io/arxiv_summary/`는 정적 UI를 담당하고, 서버의 `arxiv-summary-api` 컨테이너가 실시간 백필을 담당합니다.
+GitHub Pages는 정적 호스팅이라 OpenAI API나 DB를 직접 실행할 수 없습니다. 그래서 `standingjuno.github.io/paper/arxiv_summary/`는 정적 UI를 담당하고, 서버의 `arxiv-summary-api` 컨테이너가 실시간 백필을 담당합니다.
 
-서버 Caddy도 같은 정적 웹을 `https://arxiv-summary.221.155.32.232.sslip.io/arxiv_summary/`에서 제공합니다. 이 주소는 `web/` 파일을 서버 디스크에서 바로 읽고 `/api/*`, `/health`만 FastAPI로 reverse proxy하므로 GitHub Pages 배포 지연과 무관하게 즉시 확인할 수 있습니다.
+서버 Caddy도 같은 정적 웹을 `https://arxiv-summary.221.155.32.232.sslip.io/paper/arxiv_summary/`에서 제공합니다. 이 주소는 `web/` 파일을 서버 디스크에서 바로 읽고 `/api/*`, `/health`만 FastAPI로 reverse proxy하므로 GitHub Pages 배포 지연과 무관하게 즉시 확인할 수 있습니다.
 
 이 페이지 자체는 Jekyll을 사용하지 않습니다. `web/` 안의 파일은 front matter, Liquid include, Jekyll layout 없이 순수 HTML/CSS/JS/JSON으로 동작합니다.
 
@@ -196,7 +196,7 @@ export 후 GitHub Pages에 반영하려면 커밋/푸시가 필요합니다. 서
 
 ```bash
 BLOG_REPO_URL=git@github.com:standingjuno/standingjuno.github.io.git \
-BLOG_SUBDIR=arxiv_summary \
+BLOG_SUBDIR=paper/arxiv_summary \
 ./tools/deploy_blog_page.sh
 ```
 
@@ -206,19 +206,20 @@ BLOG_SUBDIR=arxiv_summary \
 
 ```text
 standingjuno/standingjuno.github.io
-└── arxiv_summary/
-    ├── index.html
-    ├── styles.css
-    ├── app.js
-    ├── config.js
-    └── data/site-data.json
+└── paper/
+    └── arxiv_summary/
+        ├── index.html
+        ├── styles.css
+        ├── app.js
+        ├── config.js
+        └── data/site-data.json
 ```
 
-목표 GitHub Pages 주소는 `https://standingjuno.github.io/arxiv_summary/`입니다.
+목표 GitHub Pages 주소는 `https://standingjuno.github.io/paper/arxiv_summary/`입니다.
 
 완전히 repo 단위로 Jekyll과 분리하고 싶으면 `standingjuno/arxiv_summary` 저장소를 새로 만들거나 기존 저장소 이름을 `arxiv_summary`로 변경하면 됩니다. 그 경우 `.github/workflows/pages.yml`이 `web/` 폴더를 GitHub Pages artifact로 배포하므로 Jekyll이 전혀 필요 없습니다.
 
-이번 웹은 상대 경로로 asset/data를 읽으므로 `arxiv_summary` 하위 경로에서도 그대로 동작합니다.
+이번 웹은 상대 경로로 asset/data를 읽으므로 `paper/arxiv_summary` 하위 경로에서도 그대로 동작합니다.
 
 ## Batch Summary Flow
 
@@ -351,7 +352,7 @@ docker compose -f docker/docker-compose.yml up -d --build
 
 - `postgres`: 1년치 요약 데이터 저장
 - `api`: FastAPI 백필/조회 서버
-- `caddy`: `https://arxiv-summary.221.155.32.232.sslip.io` HTTPS reverse proxy와 `/arxiv_summary/` 정적 웹
+- `caddy`: `https://arxiv-summary.221.155.32.232.sslip.io` HTTPS reverse proxy와 `/paper/arxiv_summary/` 정적 웹
 - `arxiv-summary`: 오전 11시 daily scheduler
 
 상태 확인:
@@ -428,7 +429,7 @@ arXiv API Terms of Use는 legacy API에 대해 관리 중인 모든 머신 전�
 ## Next Roadmap
 
 - API HTTPS 노출 구성
-- `standingjuno.github.io/arxiv_summary/` 경로에 맞춘 배포 저장소/브랜치 전략 확정
+- `standingjuno.github.io/paper/arxiv_summary/` 경로에 맞춘 배포 저장소/브랜치 전략 확정
 - 실시간 백필 job 히스토리 영속화
 - 로컬 AI provider 추가
 - 테스트와 DB migration 도입

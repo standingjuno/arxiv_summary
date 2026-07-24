@@ -98,7 +98,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "web": {
         "output_dir": "web",
-        "base_path": "/arxiv_summary/",
+        "base_path": "/paper/arxiv_summary/",
         "api_base_url": "",
         "export_days": 365,
         "auto_export": True,
@@ -356,7 +356,7 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         database_retention_days=int(database.get("retention_days", 365)),
         database_auto_cleanup=_as_bool(database.get("auto_cleanup"), default=True),
         web_output_dir=web_output_dir,
-        web_base_path=str(web.get("base_path") or "/arxiv_summary/"),
+        web_base_path=str(web.get("base_path") or "/paper/arxiv_summary/"),
         web_api_base_url=str(web.get("api_base_url") or "").rstrip("/"),
         web_export_days=int(web.get("export_days", 365)),
         web_auto_export=_as_bool(web.get("auto_export"), default=True),

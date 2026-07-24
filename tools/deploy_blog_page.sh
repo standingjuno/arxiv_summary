@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 BLOG_REPO_URL="${BLOG_REPO_URL:-git@github.com:standingjuno/standingjuno.github.io.git}"
 BLOG_BRANCH="${BLOG_BRANCH:-main}"
-BLOG_SUBDIR="${BLOG_SUBDIR:-arxiv_summary}"
+BLOG_SUBDIR="${BLOG_SUBDIR:-paper/arxiv_summary}"
 COMMIT_MESSAGE="${COMMIT_MESSAGE:-Update arxiv_summary page $(date +%F)}"
 GIT_USER_NAME="${GIT_USER_NAME:-standingjuno}"
 GIT_USER_EMAIL="${GIT_USER_EMAIL:-standingjuno@users.noreply.github.com}"
