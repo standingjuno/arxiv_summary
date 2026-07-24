@@ -16,6 +16,11 @@ run_pipeline() {
     python main.py --retry-failed-only || echo "[scheduler] failed-run retry pass ended with errors"
   fi
 
+  if ! is_weekday "${run_date}"; then
+    echo "[scheduler] skipping weekend daily job date=${run_date}"
+    return
+  fi
+
   echo "[scheduler] running pipeline for ${run_date}"
   python main.py --date "${run_date}" --step "${daily_step}" ${DAILY_EXTRA_ARGS:-} \
     || echo "[scheduler] daily pipeline failed; it was recorded for retry"
