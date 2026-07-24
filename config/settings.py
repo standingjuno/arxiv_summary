@@ -112,7 +112,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "http://127.0.0.1:8765",
         ],
         "on_demand_enabled": True,
-        "on_demand_summary_mode": "sync",
+        "on_demand_summary_mode": "batch",
         "on_demand_max_papers": 600,
     },
     "paths": {
@@ -364,7 +364,7 @@ def load_settings(config_path: str | Path | None = None) -> Settings:
         api_port=int(api.get("port", 8000)),
         api_cors_origins=_as_string_tuple(api.get("cors_origins"), ()),
         api_on_demand_enabled=_as_bool(api.get("on_demand_enabled"), default=True),
-        api_on_demand_summary_mode=str(api.get("on_demand_summary_mode") or "sync").strip().lower(),
+        api_on_demand_summary_mode=str(api.get("on_demand_summary_mode") or "batch").strip().lower(),
         api_on_demand_max_papers=int(api.get("on_demand_max_papers", 600)),
         keyword_seed_keywords=_as_string_tuple(
             keywords.get("seed"),

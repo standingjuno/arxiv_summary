@@ -236,6 +236,8 @@ OpenAI 요약은 기본적으로 Batch API를 사용합니다. Batch API는 요�
 
 제출 직후 batch가 `validating` 또는 `in_progress` 상태이면 정상 대기 상태로 보고, `store`는 다음 실행에서 처리합니다. 즉 daily job은 보통 “완료된 이전 batch 반영 + 오늘 batch 제출” 방식으로 움직입니다.
 
+Docker scheduler는 매일 오전 11시(KST)에 daily job을 실행합니다. 컨테이너가 11시 이후에 재시작되면 오늘 데이터가 DB에 없고 활성 Batch도 없는지 확인한 뒤 놓친 daily job을 catch-up합니다. 또한 다음 실행 시간까지 잠자는 동안에도 주기적으로 완료된 Batch와 실패 기록을 확인해서, Batch가 끝나면 DB 저장과 `web/data/site-data.json` export까지 자동으로 이어갑니다.
+
 웹에서 데이터가 없는 평일 날짜를 선택하면 FastAPI의 `POST /api/dates/{date}/run`이 실행됩니다. `on_demand_summary_mode = "batch"`이면 즉시 OpenAI Batch를 제출하고 `pending` 상태로 남깁니다. 프론트엔드는 `GET /api/jobs/{job_id}`를 계속 polling하며, 서버는 polling 중 완료된 Batch를 발견하면 요약을 DB에 저장하고 `web/data/site-data.json`을 다시 export합니다.
 
 ## Watched Fields

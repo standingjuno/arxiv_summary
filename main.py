@@ -1,5 +1,6 @@
 import argparse
 from datetime import date, datetime, timedelta
+import json
 import sys
 from zoneinfo import ZoneInfo
 
@@ -219,6 +220,18 @@ def retry_failed_runs(settings: Settings) -> bool:
     print(f"[state] retrying failed runs count={len(failed_specs)}")
     all_ok = True
     for spec in failed_specs:
+        state_path = settings.batch_dir / f"summary_batch_{spec.date_str}.state.json"
+        if state_path.exists():
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            status = str(state.get("status") or "")
+            if status in {"validating", "in_progress", "finalizing", "cancelling", "completed"}:
+                print(
+                    f"[state] cleared failed run with active batch "
+                    f"date={spec.date_str} status={status}"
+                )
+                clear_failed_run(settings, spec)
+                continue
+
         try:
             ready = run_pipeline(
                 date_str=spec.date_str,
